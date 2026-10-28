@@ -26,14 +26,11 @@ QBCore.Functions.CreateUseableItem(RPConfig.Item, function(source, item)
   TriggerClientEvent('realpaints:client:openCan', source, item and item.slot or nil)
 end)
 
-RegisterCommand(RPConfig.Command, function(src)
-  if src == 0 then return end
-  if allowed(src) then
-    TriggerClientEvent('realpaints:client:openCommand', src)
-  else
-    TriggerClientEvent('ox_lib:notify', src, { type = 'error', description = 'You are not allowed to use this command.' })
-  end
-end, false)
+lib.callback.register('realpaints:server:canUseCommand', function(src)
+  local permitted = allowed(src)
+  print(('[realpaints] /%s access for player %s: %s'):format(RPConfig.Command, src, permitted and 'allowed' or 'denied'))
+  return permitted
+end)
 
 local VALID_PART = { primary = true, secondary = true, both = true }
 local VALID_MODE = { can = true, command = true }

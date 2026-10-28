@@ -175,6 +175,29 @@ RegisterNetEvent('realpaints:client:openCommand', function()
   openMenu('command', nil)
 end)
 
+-- Register the command locally so chat and F8 both open it on this client.
+-- The server still decides whether the player may use the command.
+RegisterCommand(RPConfig.Command, function()
+  print(('[realpaints] /%s invoked on client'):format(RPConfig.Command))
+
+  local ok, permitted = pcall(function()
+    return lib.callback.await('realpaints:server:canUseCommand', false)
+  end)
+  if not ok then
+    print(('[realpaints] permission check failed: %s'):format(tostring(permitted)))
+    notify('error', 'RealPaints permission check failed. See F8 console.')
+    return
+  end
+  if not permitted then
+    notify('error', 'You are not allowed to use this command.')
+    return
+  end
+
+  openMenu('command', nil)
+end, false)
+
+print(('[realpaints] client ready; command /%s registered'):format(RPConfig.Command))
+
 CreateThread(function()
   Wait(1000)
   TriggerEvent('chat:addSuggestion', '/' .. RPConfig.Command, 'Apply a real-world factory paint')
