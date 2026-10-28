@@ -48,8 +48,18 @@ The console should show `[realpaints] loaded N colours in N tabs` (jg-mechanic) 
 ## Using it
 
 - Spray can: give yourself one with `/giveitem <id> paintcan 1` (admin). Stand next to a car, use the item, pick region, brand and colour, then Primary / Secondary / Both. A spray animation plays, the paint is applied and the can is used up.
-- Command: sit in the driver seat and type `/realpaint`. Allowed for anyone with a vMenu colour permission (see `realpaints/config.lua`).
+- Command: sit in the driver seat and type `/realpaint`. Available to players with QBCore `god`/`admin` permissions, the dedicated `realpaints.command` ACE, or an existing vMenu colour ACE (see `realpaints/config.lua`).
 - The colour is saved to the vehicle in the garage database, so it stays after storing and retrieving the vehicle and after a restart.
+
+## Permanent command access
+
+QBCore `god` and `admin` users can use the command automatically if those permissions are persistent in your server configuration. No broad vMenu permission is necessary.
+
+To grant access to one specific player independently of QBCore, put this in the active `server.cfg` (replace the placeholder with that player's actual FiveM license identifier):
+
+    add_ace identifier.license:YOUR_LICENSE realpaints.command allow
+
+Restart the server after editing `server.cfg`, then verify `/realpaint` in the driver's seat. Do not use temporary `player.1` ACE grants for permanent access, because the numeric server ID may change.
 
 ## Settings
 

@@ -5,8 +5,16 @@ print(('[realpaints] %d colours loaded'):format(#RealPaintsList))
 local lastUse = {}
 
 local function allowed(src)
+  -- vMenu compatibility and optional dedicated RealPaints ACE.
   for _, ace in ipairs(RPConfig.CommandAces or {}) do
     if IsPlayerAceAllowed(tostring(src), ace) then return true end
+  end
+
+  -- Recognize existing QBCore admins without granting extra vMenu permissions.
+  if type(QBCore.Functions.HasPermission) == 'function' then
+    for _, permission in ipairs(RPConfig.CommandQBPermissions or {}) do
+      if QBCore.Functions.HasPermission(src, permission) then return true end
+    end
   end
   return false
 end
