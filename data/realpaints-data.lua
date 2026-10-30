@@ -684,11 +684,11 @@ RealPaintsData = {
       { name = "Liquid Platinum", hex = "bdc3c7", finish = "metallic" },
       { name = "Malbec Black", hex = "26212b", finish = "pearl" },
       { name = "Moonlight White", hex = "f0f0e9", finish = "pearl" },
-      { name = "Mineral Black", hex = "242528", finish = "metallic" },
+      { name = "Mineral Black", hex = "34343a", finish = "metallic" },
       { name = "Iridium Blue", hex = "2d71a2", finish = "metallic" },
       { name = "Champagne Quartz", hex = "bfae96", finish = "metallic" },
       { name = "Slate Gray", hex = "7f8588", finish = "metallic" },
-      { name = "Radiant White", hex = "f5f2eb", finish = "pearl" },
+      { name = "Radiant White", hex = "faf7f0", finish = "pearl" },
     },
   },
   {
