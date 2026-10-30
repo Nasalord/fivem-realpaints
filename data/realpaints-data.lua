@@ -1038,6 +1038,8 @@ RealPaintsData = {
       { name = "Lightning Green", hex = "9edd24", finish = "solid" },
       { name = "Squadron Black", hex = "181a1d", finish = "solid" },
       { name = "R-Green", hex = "47aa3e", finish = "metallic" },
+      { name = "Stratos Blue", hex = "8ac8da", finish = "metallic" },
+      { name = "Purple Haze", hex = "8130a5", finish = "pearl" },
     },
   },
 }
