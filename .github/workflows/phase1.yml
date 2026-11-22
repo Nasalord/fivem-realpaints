@@ -1,0 +1,37 @@
+name: RealPaints Phase 1 source checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  phase1:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lua 5.4
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq lua5.4
+      - name: Lua source syntax
+        run: |
+          for file in realpaints/*.lua realpaints/shared/*.lua data/*.lua jg-mechanic/config/*.lua tests/*.lua; do
+            luac5.4 -p "$file"
+          done
+      - name: Native, persistence and catalogue specs
+        run: |
+          lua5.4 tests/phase1_spec.lua
+          lua5.4 tests/validate_data.lua
+      - name: PowerShell deployment and rollback syntax
+        shell: pwsh
+        run: |
+          foreach ($file in @('deploy.ps1','rollback.ps1')) {
+            $tokens = $null; $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $file).Path, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error $_.Message }
+              exit 1
+            }
+          }
