@@ -3,6 +3,8 @@
 --
 -- finish: solid | metallic | pearl | matte | satin | chrome
 -- region must be one of: German, Italian, Japanese, American, British, Other
+-- Optional per-colour: gta = six-digit game RGB hex; pearl = integer 0..160;
+-- status = unset | measured | reviewed. Keep hex unchanged as the reference.
 
 RealPaintsData = {
   {
