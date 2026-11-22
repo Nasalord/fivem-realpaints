@@ -119,7 +119,7 @@ lib.callback.register('realpaints:server:apply', function(src, req)
     end
   end
 
-  return { ok = true, rgb = paint.rgb, finish = paint.finish, saved = saved }
+  return { ok = true, rgb = paint.rgb, finish = paint.finish, pearl = paint.pearl, saved = saved }
 end)
 
 AddEventHandler('playerDropped', function()
