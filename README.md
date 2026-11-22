@@ -70,7 +70,7 @@ Edit `realpaints/config.lua` in the repo (not on the server, deploy overwrites i
     git -C "E:\MAIN SERVER\deploy\fivem-realpaints" pull
     powershell -ExecutionPolicy Bypass -File "E:\MAIN SERVER\deploy\fivem-realpaints\deploy.ps1"
 
-Then `refresh`, `ensure realpaints` and `restart jg-mechanic` in the txAdmin Live Console. Running deploy again is safe: it re-copies the files, skips patches that are already in, and makes a fresh backup.
+Then `refresh`, `ensure realpaints` and `restart jg-mechanic` in the txAdmin Live Console. Running deploy again makes a backup and updates colour data. Phase 1 upgrades the exact prior REALPAINTS block to a versioned pearl-safe preview, or refuses an unknown jg callback/patch without writing files. The install generates its preview block from the locally licensed jg callback (preserving jg bookkeeping/sync); no jg code is stored in this repo. Review the generated patch in a dry copy before deploying to live.
 
 ## Rollback
 
@@ -98,6 +98,10 @@ Rules:
 - `code` is optional. Leave it out if you are not sure of it.
 - `hex` is 6 lowercase hex digits, no `#`.
 - `finish` is one of: solid, metallic, pearl, matte, satin, chrome.
+- Optional `gta`: a six-digit calibrated in-game RGB hex. When absent, the original `hex` is used unchanged.
+- Optional `pearl`: integer GTA palette index 0-160. When absent, preserve the vehicle's current pearlescent colour and wheel colour; explicit 0 is respected.
+- Optional `status`: `unset`, `measured` or `reviewed`. Invalid optional fields log a warning and are ignored without changing the saved paint ID.
+- `hex` is always the original reference swatch; do not overwrite it with calibrated values.
 - `region` is one of: German, Italian, Japanese, American, British, Other.
 - Use plain ASCII in names (no accents or fancy quotes).
 - Add new colours only at the END of a brand's list, or add new brands at the END of the data, so the IDs of existing colours stay stable (saved vehicles use those IDs).
