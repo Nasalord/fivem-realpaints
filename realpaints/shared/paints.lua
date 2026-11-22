@@ -38,6 +38,7 @@ if type(RealPaintsData) == 'table' then
         if fin == nil then fin = 1 end
         local id = nextId
         nextId = nextId + 1
+        local opt = RealPaintsApply.optional(c, tostring(brand.brand) .. ' ' .. tostring(c.name))
         local entry = {
           id = id,
           brand = brand.brand,
