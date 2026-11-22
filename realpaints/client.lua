@@ -85,16 +85,7 @@ local function applyPaint(paint, part)
   end
 
   takeControl(veh)
-  SetVehicleModKit(veh, 0)
-  local r, g, b = res.rgb[1], res.rgb[2], res.rgb[3]
-  if part == 'primary' or part == 'both' then
-    SetVehicleModColor_1(veh, res.finish, 0, 0)
-    SetVehicleCustomPrimaryColour(veh, r, g, b)
-  end
-  if part == 'secondary' or part == 'both' then
-    SetVehicleModColor_2(veh, res.finish, 0)
-    SetVehicleCustomSecondaryColour(veh, r, g, b)
-  end
+  RealPaintsApply.applyVehicle(veh, res, part)
 
   local text = ('Applied %s %s.'):format(paint.brand, paint.name)
   if res.saved then text = text .. ' Saved to garage.' end

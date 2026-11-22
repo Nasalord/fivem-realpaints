@@ -106,20 +106,13 @@ lib.callback.register('realpaints:server:apply', function(src, req)
         local ok, decoded = pcall(json.decode, row.mods)
         if ok and type(decoded) == 'table' then mods = decoded end
       end
-      if req.part == 'primary' or req.part == 'both' then
-        mods.color1 = { paint.rgb[1], paint.rgb[2], paint.rgb[3] }
-        mods.paintType1 = paint.finish
-      end
-      if req.part == 'secondary' or req.part == 'both' then
-        mods.color2 = { paint.rgb[1], paint.rgb[2], paint.rgb[3] }
-        mods.paintType2 = paint.finish
-      end
+      RealPaintsApply.saveMods(mods, paint, req.part)
       MySQL.update.await('UPDATE player_vehicles SET mods = ? WHERE plate = ?', { json.encode(mods), plate })
       saved = true
     end
   end
 
-  return { ok = true, rgb = paint.rgb, finish = paint.finish, saved = saved }
+  return { ok = true, rgb = paint.rgb, finish = paint.finish, pearl = paint.pearl, saved = saved }
 end)
 
 AddEventHandler('playerDropped', function()

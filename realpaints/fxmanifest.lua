@@ -4,6 +4,7 @@ lua54 'yes'
 
 name 'realpaints'
 description 'Real-world factory paints: usable spray can item and /realpaint command'
+version '1.1.0'
 
 dependencies {
   'qb-core',
@@ -16,6 +17,7 @@ shared_scripts {
   '@ox_lib/init.lua',
   'config.lua',
   'shared/realpaints-data.lua',
+  'shared/apply.lua',
   'shared/paints.lua',
 }
 

@@ -38,6 +38,7 @@ if type(RealPaintsData) == 'table' then
         if fin == nil then fin = 1 end
         local id = nextId
         nextId = nextId + 1
+        local opt = RealPaintsApply.optional(c, tostring(brand.brand) .. ' ' .. tostring(c.name))
         local entry = {
           id = id,
           brand = brand.brand,
@@ -45,7 +46,8 @@ if type(RealPaintsData) == 'table' then
           name = c.name,
           code = c.code,
           hex = hex,
-          rgb = { r, g, b },
+          rgb = RealPaintsApply.colour({ hex = hex, gta = opt.gta }),
+          gta = opt.gta, pearl = opt.pearl, status = opt.status,
           finish = fin,
         }
         RealPaintsList[#RealPaintsList + 1] = entry
