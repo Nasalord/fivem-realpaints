@@ -64,4 +64,3 @@ function A.applyVehicle(vehicle, paint, part)
   SetVehicleExtraColours(vehicle, keep, wheel)
   return true
 end
-return A
