@@ -74,11 +74,13 @@ for _, brand in ipairs(RealPaints.Data) do
       end
       local id = nextId
       nextId = nextId + 1
+      local opt = RealPaintsApply.optional(c, tostring(brand.brand) .. ' ' .. tostring(c.name))
       local entry = {
         modIndex = id,
         name = brand.brand .. " " .. c.name .. (c.code and (" (" .. c.code .. ")") or ""),
         hex = hex,
-        rgb = { r, g, b },
+        rgb = RealPaintsApply.colour({ hex = hex, gta = opt.gta }),
+        gta = opt.gta, pearl = opt.pearl, status = opt.status,
         finish = fin,
         fallback = nearestPalette(r, g, b),
       }
