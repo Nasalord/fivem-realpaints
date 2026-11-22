@@ -136,7 +136,7 @@ if ($modsText.Contains($MarkerV2)) {
     $limit = $modsText.IndexOf($anchorB, $begin, [System.StringComparison]::Ordinal)
     if ($limit -lt $begin) { Fail 'jg callbacks out of expected order' }
     $between = $modsText.Substring($begin, $limit - $begin)
-    $endMatch = [regex]::Match($between, '(?m)^end\\)[ \\t]*(?:\\r?\\n|$)')
+    $endMatch = [regex]::Match($between, '(?m)^end\)[ \t]*(?:\r?\n|$)')
     if (-not $endMatch.Success) { Fail 'jg callback close not located' }
     $original = $between.Substring(0, $endMatch.Index)
     if ($isOld) { $original = $original.Replace($oldA, '') }
@@ -145,6 +145,361 @@ if ($modsText.Contains($MarkerV2)) {
     if ((Count-Occurrences $original $nativePrimary) -ne 1 -or
         (Count-Occurrences $original $nativeSecondary) -ne 1 -or
         (Count-Occurrences $original 'cb(true)') -ne 1 -or
+        -not [regex]::IsMatch($original, '(?m)^[ \t]*cb\(true\)[ \t]*
+        -not $original.Contains('appliedMods.respray')) {
+        Fail 'jg preview logic changed: native calls, callback or respray bookkeeping unexpected'
+    }
+    $original = $original.Replace($nativePrimary, "RealPaintsApply.applyVehicle(currentVehicle, rp, 'primary')")
+    $original = $original.Replace($nativeSecondary, "RealPaintsApply.applyVehicle(currentVehicle, rp, 'secondary')")
+    $original = [regex]::Replace($original, '(?m)^[ \t]*cb\(true\)[ \t]*
+    $blockA = (@(
+        '  -- REALPAINTS V2: pearl-safe preview; return before jg pearl-zero path',
+        '  local rp = RealPaints and RealPaints.Get(data.colourId)',
+        '  if rp then',
+        '    data.enableRgb = true',
+        '    data.rgbColour = { rp.rgb[1], rp.rgb[2], rp.rgb[3] }',
+        '    data.paint = rp.finish'
+    ) -join $modsNl) + $modsNl + $original +
+      '    if rp.pearl ~= nil then appliedMods.respray.pearlescentColor = rp.pearl end' + $modsNl +
+      '    cb(true)' + $modsNl + '    return' + $modsNl + '  end' + $modsNl
+    if ($isOld) {
+        $modsPatched = $modsText.Replace($oldA, $blockA)
+        $modsStatus = 'UPGRADED V1 to V2'
+    } else {
+        $modsPatched = $modsText.Replace($anchorA, $anchorA + $blockA)
+        $modsPatched = $modsPatched.Replace($anchorB, $anchorB + $blockB)
+        $modsStatus = 'PATCHED V2'
+    }
+}
+# Do not silently keep a partially patched jg client.
+if ((Count-Occurrences $modsPatched $MarkerV2) -ne 1) {
+    Fail 'jg preview V2 marker is not unique'
+}
+
+# --- cl-vehicleprops.lua ---
+if ($propsText.Contains($Marker)) {
+    # already patched
+} else {
+    $anchorC = '      SetVehicleColours(vehicle, props.color1 or colorPrimary, props.color2)'
+    $countC = Count-Occurrences $propsText $anchorC
+    if ($countC -ne 1) { Fail "cl-vehicleprops.lua: anchor 'SetVehicleColours(vehicle, props.color1 or colorPrimary, props.color2)' found $countC times (expected exactly 1). File: $propsPath" }
+
+    $blockC = (@(
+        '      -- REALPAINTS: fix table passed to numeric native when primary is custom RGB',
+        '      local rpPri = type(props.color1) == "number" and props.color1 or colorPrimary',
+        '      SetVehicleColours(vehicle, rpPri, props.color2)',
+        '      if type(props.color1) == "table" then',
+        '        SetVehicleCustomPrimaryColour(vehicle, props.color1[1], props.color1[2], props.color1[3])',
+        '      end'
+    ) -join $propsNl)
+
+    $propsPatched = $propsText.Replace($anchorC, $blockC)
+    $propsStatus = 'PATCHED'
+}
+
+# ---------- c. Backup ----------
+$stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$bk = Join-Path $BackupRoot ("realpaints-" + $stamp)
+$n = 1
+while (Test-Path -LiteralPath $bk) {
+    $bk = Join-Path $BackupRoot ("realpaints-" + $stamp + "-" + $n)
+    $n++
+}
+[void][System.IO.Directory]::CreateDirectory((Join-Path $bk 'client'))
+[void][System.IO.Directory]::CreateDirectory((Join-Path $bk 'config'))
+
+[System.IO.File]::Copy($modsPath,  (Join-Path $bk 'client\cl-mods.lua'), $true)
+[System.IO.File]::Copy($propsPath, (Join-Path $bk 'client\cl-vehicleprops.lua'), $true)
+
+$loaderWasNew = 'true'
+if (Test-Path -LiteralPath $loaderDst) {
+    $loaderWasNew = 'false'
+    [System.IO.File]::Copy($loaderDst, (Join-Path $bk 'config\zz-realpaints.lua'), $true)
+}
+$staleExisted = 'false'
+if (Test-Path -LiteralPath $staleData) {
+    $staleExisted = 'true'
+    [System.IO.File]::Copy($staleData, (Join-Path $bk 'config\zz-realpaints-data.lua'), $true)
+}
+$rpWasNew = 'true'
+if (Test-Path -LiteralPath $RpDir) {
+    $rpWasNew = 'false'
+    Copy-Tree $RpDir (Join-Path $bk 'realpaints-resource')
+}
+$manifestLines = @(
+    "zz-realpaints-was-new=$loaderWasNew",
+    "zz-realpaints-stale-data-existed=$staleExisted",
+    "realpaints-resource-was-new=$rpWasNew",
+    "res=$Res",
+    "realpaints-dir=$RpDir"
+)
+[System.IO.File]::WriteAllText((Join-Path $bk 'manifest.txt'), (($manifestLines -join "`r`n") + "`r`n"), $Utf8NoBom)
+
+# ---------- d. Write ----------
+[void][System.IO.Directory]::CreateDirectory((Join-Path $Res 'config'))
+# ONE merged file: data + loader, so FiveM's glob order between our own files does not matter.
+$dataText   = [System.IO.File]::ReadAllText($dataSrc).TrimEnd("`r", "`n")
+$applyText  = [System.IO.File]::ReadAllText($applySrc).TrimStart("`r", "`n").TrimEnd("`r", "`n")
+$loaderText = [System.IO.File]::ReadAllText($loaderSrc).TrimStart("`r", "`n")
+$merged = $dataText + "`n" + $applyText + "`n" + '-- ===== loader (from jg-mechanic/config/zz-realpaints.lua in repo) =====' + "`n" + $loaderText
+[System.IO.File]::WriteAllText($loaderDst, $merged, $Utf8NoBom)
+if ($staleExisted -eq 'true') { Remove-Item -LiteralPath $staleData -Force }
+if ($modsPatched -ne $modsText) { [System.IO.File]::WriteAllText($modsPath, $modsPatched, $Utf8NoBom) }
+if ($propsStatus -eq 'PATCHED') { [System.IO.File]::WriteAllText($propsPath, $propsPatched, $Utf8NoBom) }
+
+Copy-Tree $rpSrc $RpDir
+[void][System.IO.Directory]::CreateDirectory((Join-Path $RpDir 'shared'))
+[System.IO.File]::Copy($dataSrc, $rpDataDst, $true)
+
+# ---------- e. Summary ----------
+Write-Host ""
+Write-Host "RealPaints deploy complete." -ForegroundColor Green
+Write-Host "  jg-mechanic config\zz-realpaints.lua      : written (data + loader merged)"
+Write-Host "  jg-mechanic client\cl-mods.lua            : $modsStatus"
+Write-Host "  jg-mechanic client\cl-vehicleprops.lua    : $propsStatus"
+Write-Host "  [standalone]\realpaints resource          : copied (new: $rpWasNew)"
+Write-Host "  Backup                                    : $bk"
+Write-Host ""
+Write-Host "NEXT: in txAdmin Live Console type these three lines, one at a time:"
+Write-Host "  refresh"
+Write-Host "  ensure realpaints"
+Write-Host "  restart jg-mechanic"
+Write-Host "Check the console for '[realpaints] loaded'"
+) -or
+        -not $original.Contains('appliedMods.respray')) {
+        Fail 'jg preview logic changed: native calls, callback or respray bookkeeping unexpected'
+    }
+    $original = $original.Replace($nativePrimary, "RealPaintsApply.applyVehicle(currentVehicle, rp, 'primary')")
+    $original = $original.Replace($nativeSecondary, "RealPaintsApply.applyVehicle(currentVehicle, rp, 'secondary')")
+    $original = $original.Replace('cb(true)', '-- callback is sent by RealPaints V2 below')
+    $blockA = (@(
+        '  -- REALPAINTS V2: pearl-safe preview; return before jg pearl-zero path',
+        '  local rp = RealPaints and RealPaints.Get(data.colourId)',
+        '  if rp then',
+        '    data.enableRgb = true',
+        '    data.rgbColour = { rp.rgb[1], rp.rgb[2], rp.rgb[3] }',
+        '    data.paint = rp.finish'
+    ) -join $modsNl) + $modsNl + $original +
+      '    if rp.pearl ~= nil then appliedMods.respray.pearlescentColor = rp.pearl end' + $modsNl +
+      '    cb(true)' + $modsNl + '    return' + $modsNl + '  end' + $modsNl
+    if ($isOld) {
+        $modsPatched = $modsText.Replace($oldA, $blockA)
+        $modsStatus = 'UPGRADED V1 to V2'
+    } else {
+        $modsPatched = $modsText.Replace($anchorA, $anchorA + $blockA)
+        $modsPatched = $modsPatched.Replace($anchorB, $anchorB + $blockB)
+        $modsStatus = 'PATCHED V2'
+    }
+}
+# Do not silently keep a partially patched jg client.
+if ((Count-Occurrences $modsPatched $MarkerV2) -ne 1) {
+    Fail 'jg preview V2 marker is not unique'
+}
+
+# --- cl-vehicleprops.lua ---
+if ($propsText.Contains($Marker)) {
+    # already patched
+} else {
+    $anchorC = '      SetVehicleColours(vehicle, props.color1 or colorPrimary, props.color2)'
+    $countC = Count-Occurrences $propsText $anchorC
+    if ($countC -ne 1) { Fail "cl-vehicleprops.lua: anchor 'SetVehicleColours(vehicle, props.color1 or colorPrimary, props.color2)' found $countC times (expected exactly 1). File: $propsPath" }
+
+    $blockC = (@(
+        '      -- REALPAINTS: fix table passed to numeric native when primary is custom RGB',
+        '      local rpPri = type(props.color1) == "number" and props.color1 or colorPrimary',
+        '      SetVehicleColours(vehicle, rpPri, props.color2)',
+        '      if type(props.color1) == "table" then',
+        '        SetVehicleCustomPrimaryColour(vehicle, props.color1[1], props.color1[2], props.color1[3])',
+        '      end'
+    ) -join $propsNl)
+
+    $propsPatched = $propsText.Replace($anchorC, $blockC)
+    $propsStatus = 'PATCHED'
+}
+
+# ---------- c. Backup ----------
+$stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$bk = Join-Path $BackupRoot ("realpaints-" + $stamp)
+$n = 1
+while (Test-Path -LiteralPath $bk) {
+    $bk = Join-Path $BackupRoot ("realpaints-" + $stamp + "-" + $n)
+    $n++
+}
+[void][System.IO.Directory]::CreateDirectory((Join-Path $bk 'client'))
+[void][System.IO.Directory]::CreateDirectory((Join-Path $bk 'config'))
+
+[System.IO.File]::Copy($modsPath,  (Join-Path $bk 'client\cl-mods.lua'), $true)
+[System.IO.File]::Copy($propsPath, (Join-Path $bk 'client\cl-vehicleprops.lua'), $true)
+
+$loaderWasNew = 'true'
+if (Test-Path -LiteralPath $loaderDst) {
+    $loaderWasNew = 'false'
+    [System.IO.File]::Copy($loaderDst, (Join-Path $bk 'config\zz-realpaints.lua'), $true)
+}
+$staleExisted = 'false'
+if (Test-Path -LiteralPath $staleData) {
+    $staleExisted = 'true'
+    [System.IO.File]::Copy($staleData, (Join-Path $bk 'config\zz-realpaints-data.lua'), $true)
+}
+$rpWasNew = 'true'
+if (Test-Path -LiteralPath $RpDir) {
+    $rpWasNew = 'false'
+    Copy-Tree $RpDir (Join-Path $bk 'realpaints-resource')
+}
+$manifestLines = @(
+    "zz-realpaints-was-new=$loaderWasNew",
+    "zz-realpaints-stale-data-existed=$staleExisted",
+    "realpaints-resource-was-new=$rpWasNew",
+    "res=$Res",
+    "realpaints-dir=$RpDir"
+)
+[System.IO.File]::WriteAllText((Join-Path $bk 'manifest.txt'), (($manifestLines -join "`r`n") + "`r`n"), $Utf8NoBom)
+
+# ---------- d. Write ----------
+[void][System.IO.Directory]::CreateDirectory((Join-Path $Res 'config'))
+# ONE merged file: data + loader, so FiveM's glob order between our own files does not matter.
+$dataText   = [System.IO.File]::ReadAllText($dataSrc).TrimEnd("`r", "`n")
+$applyText  = [System.IO.File]::ReadAllText($applySrc).TrimStart("`r", "`n").TrimEnd("`r", "`n")
+$loaderText = [System.IO.File]::ReadAllText($loaderSrc).TrimStart("`r", "`n")
+$merged = $dataText + "`n" + $applyText + "`n" + '-- ===== loader (from jg-mechanic/config/zz-realpaints.lua in repo) =====' + "`n" + $loaderText
+[System.IO.File]::WriteAllText($loaderDst, $merged, $Utf8NoBom)
+if ($staleExisted -eq 'true') { Remove-Item -LiteralPath $staleData -Force }
+if ($modsStatus -eq 'PATCHED')  { [System.IO.File]::WriteAllText($modsPath,  $modsPatched,  $Utf8NoBom) }
+if ($propsStatus -eq 'PATCHED') { [System.IO.File]::WriteAllText($propsPath, $propsPatched, $Utf8NoBom) }
+
+Copy-Tree $rpSrc $RpDir
+[void][System.IO.Directory]::CreateDirectory((Join-Path $RpDir 'shared'))
+[System.IO.File]::Copy($dataSrc, $rpDataDst, $true)
+
+# ---------- e. Summary ----------
+Write-Host ""
+Write-Host "RealPaints deploy complete." -ForegroundColor Green
+Write-Host "  jg-mechanic config\zz-realpaints.lua      : written (data + loader merged)"
+Write-Host "  jg-mechanic client\cl-mods.lua            : $modsStatus"
+Write-Host "  jg-mechanic client\cl-vehicleprops.lua    : $propsStatus"
+Write-Host "  [standalone]\realpaints resource          : copied (new: $rpWasNew)"
+Write-Host "  Backup                                    : $bk"
+Write-Host ""
+Write-Host "NEXT: in txAdmin Live Console type these three lines, one at a time:"
+Write-Host "  refresh"
+Write-Host "  ensure realpaints"
+Write-Host "  restart jg-mechanic"
+Write-Host "Check the console for '[realpaints] loaded'"
+, '  -- callback sent by RealPaints V2 below')
+    $blockA = (@(
+        '  -- REALPAINTS V2: pearl-safe preview; return before jg pearl-zero path',
+        '  local rp = RealPaints and RealPaints.Get(data.colourId)',
+        '  if rp then',
+        '    data.enableRgb = true',
+        '    data.rgbColour = { rp.rgb[1], rp.rgb[2], rp.rgb[3] }',
+        '    data.paint = rp.finish'
+    ) -join $modsNl) + $modsNl + $original +
+      '    if rp.pearl ~= nil then appliedMods.respray.pearlescentColor = rp.pearl end' + $modsNl +
+      '    cb(true)' + $modsNl + '    return' + $modsNl + '  end' + $modsNl
+    if ($isOld) {
+        $modsPatched = $modsText.Replace($oldA, $blockA)
+        $modsStatus = 'UPGRADED V1 to V2'
+    } else {
+        $modsPatched = $modsText.Replace($anchorA, $anchorA + $blockA)
+        $modsPatched = $modsPatched.Replace($anchorB, $anchorB + $blockB)
+        $modsStatus = 'PATCHED V2'
+    }
+}
+# Do not silently keep a partially patched jg client.
+if ((Count-Occurrences $modsPatched $MarkerV2) -ne 1) {
+    Fail 'jg preview V2 marker is not unique'
+}
+
+# --- cl-vehicleprops.lua ---
+if ($propsText.Contains($Marker)) {
+    # already patched
+} else {
+    $anchorC = '      SetVehicleColours(vehicle, props.color1 or colorPrimary, props.color2)'
+    $countC = Count-Occurrences $propsText $anchorC
+    if ($countC -ne 1) { Fail "cl-vehicleprops.lua: anchor 'SetVehicleColours(vehicle, props.color1 or colorPrimary, props.color2)' found $countC times (expected exactly 1). File: $propsPath" }
+
+    $blockC = (@(
+        '      -- REALPAINTS: fix table passed to numeric native when primary is custom RGB',
+        '      local rpPri = type(props.color1) == "number" and props.color1 or colorPrimary',
+        '      SetVehicleColours(vehicle, rpPri, props.color2)',
+        '      if type(props.color1) == "table" then',
+        '        SetVehicleCustomPrimaryColour(vehicle, props.color1[1], props.color1[2], props.color1[3])',
+        '      end'
+    ) -join $propsNl)
+
+    $propsPatched = $propsText.Replace($anchorC, $blockC)
+    $propsStatus = 'PATCHED'
+}
+
+# ---------- c. Backup ----------
+$stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$bk = Join-Path $BackupRoot ("realpaints-" + $stamp)
+$n = 1
+while (Test-Path -LiteralPath $bk) {
+    $bk = Join-Path $BackupRoot ("realpaints-" + $stamp + "-" + $n)
+    $n++
+}
+[void][System.IO.Directory]::CreateDirectory((Join-Path $bk 'client'))
+[void][System.IO.Directory]::CreateDirectory((Join-Path $bk 'config'))
+
+[System.IO.File]::Copy($modsPath,  (Join-Path $bk 'client\cl-mods.lua'), $true)
+[System.IO.File]::Copy($propsPath, (Join-Path $bk 'client\cl-vehicleprops.lua'), $true)
+
+$loaderWasNew = 'true'
+if (Test-Path -LiteralPath $loaderDst) {
+    $loaderWasNew = 'false'
+    [System.IO.File]::Copy($loaderDst, (Join-Path $bk 'config\zz-realpaints.lua'), $true)
+}
+$staleExisted = 'false'
+if (Test-Path -LiteralPath $staleData) {
+    $staleExisted = 'true'
+    [System.IO.File]::Copy($staleData, (Join-Path $bk 'config\zz-realpaints-data.lua'), $true)
+}
+$rpWasNew = 'true'
+if (Test-Path -LiteralPath $RpDir) {
+    $rpWasNew = 'false'
+    Copy-Tree $RpDir (Join-Path $bk 'realpaints-resource')
+}
+$manifestLines = @(
+    "zz-realpaints-was-new=$loaderWasNew",
+    "zz-realpaints-stale-data-existed=$staleExisted",
+    "realpaints-resource-was-new=$rpWasNew",
+    "res=$Res",
+    "realpaints-dir=$RpDir"
+)
+[System.IO.File]::WriteAllText((Join-Path $bk 'manifest.txt'), (($manifestLines -join "`r`n") + "`r`n"), $Utf8NoBom)
+
+# ---------- d. Write ----------
+[void][System.IO.Directory]::CreateDirectory((Join-Path $Res 'config'))
+# ONE merged file: data + loader, so FiveM's glob order between our own files does not matter.
+$dataText   = [System.IO.File]::ReadAllText($dataSrc).TrimEnd("`r", "`n")
+$applyText  = [System.IO.File]::ReadAllText($applySrc).TrimStart("`r", "`n").TrimEnd("`r", "`n")
+$loaderText = [System.IO.File]::ReadAllText($loaderSrc).TrimStart("`r", "`n")
+$merged = $dataText + "`n" + $applyText + "`n" + '-- ===== loader (from jg-mechanic/config/zz-realpaints.lua in repo) =====' + "`n" + $loaderText
+[System.IO.File]::WriteAllText($loaderDst, $merged, $Utf8NoBom)
+if ($staleExisted -eq 'true') { Remove-Item -LiteralPath $staleData -Force }
+if ($modsStatus -eq 'PATCHED')  { [System.IO.File]::WriteAllText($modsPath,  $modsPatched,  $Utf8NoBom) }
+if ($propsStatus -eq 'PATCHED') { [System.IO.File]::WriteAllText($propsPath, $propsPatched, $Utf8NoBom) }
+
+Copy-Tree $rpSrc $RpDir
+[void][System.IO.Directory]::CreateDirectory((Join-Path $RpDir 'shared'))
+[System.IO.File]::Copy($dataSrc, $rpDataDst, $true)
+
+# ---------- e. Summary ----------
+Write-Host ""
+Write-Host "RealPaints deploy complete." -ForegroundColor Green
+Write-Host "  jg-mechanic config\zz-realpaints.lua      : written (data + loader merged)"
+Write-Host "  jg-mechanic client\cl-mods.lua            : $modsStatus"
+Write-Host "  jg-mechanic client\cl-vehicleprops.lua    : $propsStatus"
+Write-Host "  [standalone]\realpaints resource          : copied (new: $rpWasNew)"
+Write-Host "  Backup                                    : $bk"
+Write-Host ""
+Write-Host "NEXT: in txAdmin Live Console type these three lines, one at a time:"
+Write-Host "  refresh"
+Write-Host "  ensure realpaints"
+Write-Host "  restart jg-mechanic"
+Write-Host "Check the console for '[realpaints] loaded'"
+) -or
         -not $original.Contains('appliedMods.respray')) {
         Fail 'jg preview logic changed: native calls, callback or respray bookkeeping unexpected'
     }
