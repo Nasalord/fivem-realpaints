@@ -15,6 +15,9 @@ for _,brand in ipairs(RealPaintsData) do
       assert(type(colour.pearl)=='number' and colour.pearl%1==0
         and colour.pearl>=0 and colour.pearl<=160)
     end
+    if colour.source~=nil then
+      assert(type(colour.source)=='string' and #colour.source<=120)
+    end
     if colour.status~=nil then
       assert(colour.status=='unset' or colour.status=='measured' or colour.status=='reviewed')
     end
