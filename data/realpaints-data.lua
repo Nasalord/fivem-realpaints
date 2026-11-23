@@ -461,7 +461,7 @@ RealPaintsData = {
       { code = "5119H", name = "Tungsten Silver", hex = "8d9294", finish = "metallic", source = "ChipFixx Aston Martin paint-code database" },
       { name = "Skyfall Silver", hex = "bfc5c9", finish = "metallic" },
       { name = "Scorpus Red", hex = "8e1e32", finish = "metallic" },
-      { code = "5174D", name = "Cinnabar Orange", hex = "b55929", finish = "metallic", source = "ChipFixx Aston Martin paint-code database" },
+      { code = "5189D", name = "Cinnabar Orange", hex = "b55929", finish = "metallic", source = "ChipFixx Aston Martin paint-code database" },
       { code = "5172D", name = "Arizona Bronze", hex = "7d6148", finish = "metallic", source = "ChipFixx Aston Martin paint-code database" },
       { code = "6244B", name = "Apex Grey", hex = "424c52", finish = "metallic", source = "ChipFixx Aston Martin paint-code database" },
       { name = "Minotaur Green", hex = "304a36", finish = "metallic" },
@@ -560,7 +560,7 @@ RealPaintsData = {
       { code = "M503", name = "Shadow Grey", hex = "51565b", finish = "metallic", source = "ChipFixx Lotus paint-code database" },
       { name = "Zinc Grey", hex = "b3b5ad", finish = "metallic" },
       { code = "M201", name = "Mist White", hex = "eceee9", finish = "solid", source = "ChipFixx Lotus paint-code database" },
-      { code = "M508", name = "Cosmos Black", hex = "101317", finish = "metallic", source = "ChipFixx Lotus paint-code database" },
+      { name = "Cosmos Black", hex = "101317", finish = "metallic" },
     },
   },
   {
