@@ -1,6 +1,6 @@
 # Reference paint-code coverage
 
-T-03-4e snapshot of `data/realpaints-data.lua` on this branch. **With code** means a `code` field is present; **blank** means none is recorded, not that the manufacturer has none. Counts are based on the catalogue's actual `region` values. All 782 IDs and source rows remain in place.
+T-03-4f snapshot of `data/realpaints-data.lua` on this branch. **With code** means a `code` field is recorded; **blank** means no code recorded, not that the manufacturer has none. Counts use the catalogue's actual region values and include all 782 existing colour IDs.
 
 | Region | Colours | With code | Blank |
 | --- | ---: | ---: | ---: |
@@ -9,12 +9,12 @@ T-03-4e snapshot of `data/realpaints-data.lua` on this branch. **With code** mea
 | Japanese | 162 | 108 | 54 |
 | American | 133 | 106 | 27 |
 | British | 119 | 95 | 24 |
-| French | 56 | 0 | 56 |
-| Swedish | 40 | 0 | 40 |
-| Korean | 42 | 0 | 42 |
+| French | 56 | 31 | 25 |
+| Swedish | 40 | 21 | 19 |
+| Korean | 42 | 35 | 7 |
 | Other | 12 | 0 | 12 |
-| **Total** | **782** | **456** | **326** |
+| **Total** | **782** | **543** | **239** |
 
-British batch: 91 sourced paint codes added. Uncertain name/code variants remain blank. Other region: Rimac (12 colours), left uncoded because no manufacturer/refinish-code mappings were sufficiently substantiated. French, Swedish and Korean are separate catalogue regions and are outside T-03-4e; they are listed here so totals cover all 782 colours.
+T-03-4f adds **87** sourced codes: French 31, Swedish 21, Korean 35. These three regions contain **138** colours (56 + 40 + 42), not 156. Bugatti and Koenigsegg entries remain uncoded where an unambiguous manufacturer/refinish code could not be substantiated; the Other region (Rimac) remains outside this batch. Uncertain variants in other brands are left blank rather than guessed.
 
-This reports code coverage, **not** measured reference-colour accuracy or GTA/FiveM visual validation.
+Coverage indicates recorded manufacturer codes only; it does **not** establish measured hex accuracy or in-game GTA/FiveM rendering.
